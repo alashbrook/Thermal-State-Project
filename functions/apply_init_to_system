@@ -1,0 +1,46 @@
+from common_imports import *
+
+def apply_init_to_system(qc: QuantumCircuit, sys_qreg: QuantumRegister, init: Optional[InitSpec]):
+    """Initialize ONLY system qubits. Ancillas remain |0...0>."""
+    if init is None:
+        return
+
+    n_sys = len(sys_qreg)
+
+    # bitstring like "0101" (left-to-right as s[0]..s[n-1])
+    if isinstance(init, str):
+        if len(init) != n_sys or any(c not in "01" for c in init):
+            raise ValueError(f"bitstring init must be length {n_sys} over {{0,1}}")
+        for i, b in enumerate(init):
+            if b == "1":
+                qc.x(sys_qreg[i])
+        return
+
+    # basis index (int) in [0, 2**n_sys)
+    if isinstance(init, int):
+        if init < 0 or init >= 2**n_sys:
+            raise ValueError("basis index out of range")
+        bits = format(init, f"0{n_sys}b")
+        for i, b in enumerate(bits):
+            if b == "1":
+                qc.x(sys_qreg[i])
+        return
+
+    # prep circuit acting on system
+    if isinstance(init, QuantumCircuit):
+        if init.num_qubits != n_sys:
+            raise ValueError(f"prep circuit must have {n_sys} qubits")
+        qc.compose(init, qubits=list(sys_qreg), inplace=True)
+        return
+
+    # numpy array: statevector (len 2**n) or density matrix (2**n x 2**n)
+    arr = np.asarray(init)
+    d = 2**n_sys
+    if arr.shape == (d,):
+        qc.initialize(arr, list(sys_qreg))
+        return
+    if arr.shape == (d, d):
+        # Qiskit doesn't "initialize" mixed states directly.
+        # For the circuit path, you'd need a purification/ancilla method.
+        raise ValueError("Circuit init does not support mixed density matrices directly. Use a statevector or prep circuit.")
+    raise ValueError("Unrecognized init spec for circuit initialization.")

@@ -1,0 +1,11 @@
+name: schwinger_model
+channels:
+  - conda-forge
+dependencies:
+  - jupyter
+  - numpy
+  - pandas
+  - pytest
+  - pytest-cov
+  - ruff
+  - setuptools_scm>=8.1
